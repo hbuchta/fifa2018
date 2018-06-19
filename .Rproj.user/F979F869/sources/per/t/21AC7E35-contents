@@ -1,0 +1,250 @@
+# https://www.kaggle.com/agostontorok/soccer-world-cup-2018-winner?utm_medium=email&utm_source=mailchimp&utm_campaign=datanotes-20160614
+library(data.table)
+
+
+# Spielstärke wird jetzt iterativ berechnet
+
+results<-read.csv("international-football-results-from-1872-to-2017.csv", header = T, stringsAsFactors = F, encoding = "UTF-8")
+setDT(results)
+results$date<-as.Date(results$date, "%Y-%m-%d")
+results<-results[, c("date", "home_team", "away_team", "home_score", "away_score")]
+colnames(results)<-c("date", "team1", "team2", "score1", "score2")
+
+# URL einmal im Browser öffnen:
+# https://fixturedownload.com/results/fifa-world-cup-2018
+# match<-read.csv("https://fixturedownload.com/download/fifa-world-cup-2018-RussianStandardTime.csv", header=T, stringsAsFactors = F)
+# write.csv(match, "FIFA_Worldcup_2018_results.csv", row.names = F)
+match <- read.csv("FIFA_Worldcup_2018_results.csv", header=T, stringsAsFactors=F, encoding="UTF-8")
+setDT(match)
+
+match$Home.Team<-gsub("\t","",match$Home.Team)
+match$Away.Team<-gsub("\t","",match$Away.Team)
+match<-match[, -3]
+colnames(match)<-c("round","date","team1", "team2", "group", "result")
+match$date<-as.Date(match$date, "%d/%m/%Y")
+match[
+  !is.na(result) & result!=""
+  , `:=`(
+    score1=as.numeric(sub("-.*$","", result))
+    , score2=as.numeric(sub("^.*-","",result))
+  )]
+
+# Falls bereits gespielte Spiele nicht berücksichtigt werden sollen:
+# match[, c("score1", "score2"):=NA]
+# !!!!!!!!!!
+
+match[
+  !is.na(result) & result!=""
+  , win:=ifelse(score1>score2,1,ifelse(score1<score2,-1,0))
+]
+match[, result:=NULL]
+
+results<-rbind(
+  results,
+  match[!is.na(score1) & !is.na(score2), c("date","team1", "team2", "score1", "score2")]
+)
+
+# Resultstabelle erweitern (A gegen B => B gegen A)
+results<-rbind(
+  results
+  ,results[, list(date, "team1"=team2, "team2"=team1, "score1"=score2, "score2"=score1)]
+)
+
+# Teilnehmende Mannschaften und Ergebnistabelle vorbereiten
+res<-unique(rbind(
+  match[match$round %in% c("1","2","3"), list(group, team=team1)]
+  ,match[match$round %in% c("1","2","3"), list(group, team=team2)]
+))
+res[, c("P1","P2","P3","P4","G1","G2","F8","F4","F2","F1"):=0]
+# P1-4: Platz 1-4, G1/G2: Gruppenerster/-zweiter, F8: Achtelfinale erreicht (G1+G2), F4: Viertelfinale erreicht, F2: Halbfinale erreicht, F1: Finale erreicht
+
+
+# nur Partien mit WM Teams berücksichtigen
+results<-results[(team1 %in% res$team) & (team2 %in% res$team)]
+
+results$TimePassed<-as.numeric(max(results$date)-results$date)
+
+results<-results[TimePassed<=365*30]  # 30 Jahre zurück
+results$decay <- exp(-results$TimePassed/2500) # exp(-365*30/2500) ~1%
+
+
+results[, "win":=ifelse(score1>score2,1,ifelse(score1<score2,-1,0))]
+
+results[, winpoints:=0]
+results[win==1, winpoints:=3]
+results[win==0, winpoints:=1]
+
+scores <- unique(results[, list("team"=team1, "level"=1)])
+for (i in 1:50) {
+  #   message(scores$level[scores$team=="Germany"])
+  res_scores <- merge(merge(results, scores[, list("team1"=team, "level1"=level)], by="team1"), scores[, list("team2"=team, "level2"=level)], by="team2")
+  # res_scores$decay <- exp(-res_scores$TimePassed/5000) # exp(-10000/5000) etwa 14%
+  scores<-res_scores[
+    , list(
+      "level"=sum(winpoints * (level2/level1) * decay) / sum((level2/level1) * decay)
+      , "even"=sum((win==0) * (level2/level1) * decay) / sum((level2/level1) * decay)
+      , "goals_mean"=sum(score1 * exp(-TimePassed/decay)) / sum(exp(-TimePassed/decay))
+      , "goals_sd"=sd(score1)
+    )
+    , by=list("team"=team1)
+    ]
+}
+
+
+# für leichteren Join:
+scores1<-scores[, c("team","level","even", "goals_mean")]
+scores2<-scores[, c("team","level","even", "goals_mean")]
+colnames(scores1)<-paste(colnames(scores1),"1",sep="")
+colnames(scores2)<-paste(colnames(scores2),"2",sep="")
+
+match[, NoEven:=TRUE]
+match[which(match$round %in% c("1","2","3")),NoEven:=FALSE]
+
+## Ergebnisse Level auf bekannte Gruppierungen anwenden
+## ist so noch nicht ok, da die bekannten Spiele auch in den Score eingehen
+# d<-match[-unique(c(
+#   grep("Winner",paste(match$team1, match$team2))
+#   ,grep("Runner-up",paste(match$team1, match$team2))
+#   ,grep("announced", paste(match$team1, match$team2))
+# ))]
+# 
+# d<-merge(merge(d,scores1,by="team1"),scores2,by="team2")
+# d[, total:= (level1+level2) * (1+ifelse(NoEven,0,(even1+even2)/2))]   # /2?
+# d[, `:=`("prob_win"=level1/total, "prob_loose"=level2/total)]
+# d[, prob_even:=(total-level1-level2)/total]
+# d$p_win <- max.col(d[, c("prob_loose","prob_even","prob_win")])-2
+# 
+# # experimentell: Tore vorhersagen
+# d[, `:=`(p_score1=round(goals_mean1), p_score2=round(goals_mean2))]
+# d[p_win==0, c("p_score1","p_score2"):=round((goals_mean1+goals_mean2)/2)]
+# d[p_win==1 & p_score1<=p_score2, p_score1:=p_score2+1]
+# d[p_win==-1 & p_score1>=p_score2, p_score2:=p_score1+1]
+# 
+# d<-d[, c("group", "date", "team1", "team2", "score1", "score2", "win", "p_score1","p_score2","p_win","prob_win", "prob_loose","prob_even")]
+# 
+# d<-d[order(d$date)]
+# d <- d[!is.na(d$win)]
+# table("Predicted"=d$p_win, "Actual"=d$win)
+# sum(d$p_win==d$win)/nrow(d)
+# sum(d$score1==d$p_score1 & d$score2==d$p_score2)/nrow(d)
+
+
+# teams<-unique(c(match$Home.Team, match$Away.Team))
+# teams[which(! teams %in% unique(results$team1))]
+
+
+# data<-match[which(match$round %in% c("1","2","3")),]
+sim <- function(data) {
+  d<-data
+  d$idx<-1:nrow(d)
+  d<-merge(merge(d,scores1,by="team1"),scores2,by="team2")
+  d<-d[order(d$idx)]
+  total <- (d$level1+d$level2) * (1+ifelse(d$NoEven,0,d$even1+d$even2)/2)
+  rnd <- runif(nrow(d))*total
+  w<-ifelse(rnd<=d$level1,1,ifelse(rnd>=total-d$level2,-1,0))
+  ifelse(is.na(d$win), w, d$win)
+}
+# sim(match[match$round %in% c("1","2","3"), ])
+
+
+set.seed(12345)
+
+time.start <- Sys.time()
+
+for (i in 1:100000) {
+  if (i %% 1000==0) {
+    cat(
+      "Iteration ",i
+      , ", Zeit: ", round(difftime(Sys.time(),time.start, unit="min"),1), " Minuten"
+      , ", Platzierung 1-3=", paste(head(paste(res$team[order(res$P1, decreasing=T)]," (",round(res$P1[order(res$P1, decreasing=T)]/sum(res$P1),2),")", sep=""),3), collapse=", ")
+      , "\n")
+  }
+  
+  # einzelner Simulationsschritt
+  mat <- copy(match)
+  
+  # Gruppenrunde
+  round1 <- which(mat$round %in% c("1","2","3"))
+  mat$win[round1]<-sim(mat[round1, ])
+  
+  rp <- rbind(mat[round1, list("team"=team1, group, win)], mat[round1, list("team"=team2, group, "win"=-win)])
+  rp[, winpoints:=0]
+  rp[win==1, winpoints:=3]
+  rp[win==0, winpoints:=1]
+  
+  rp<-rp[
+    , list("winpoints"=as.numeric(sum(winpoints)))
+    , by=list(group, team)
+  ]
+  
+  rp<-rp[, "rank":=frank(-winpoints, ties.method = "random"), by=list(group)]
+  
+  rp[rank==1.0, pos:=paste("Winner", group)]
+  rp[rank==2.0, pos:=paste("Runner-up", group)]
+  rp<-rp[!is.na(rp$pos)]
+  
+  res[team %in% rp$team[rp$rank==1.0], G1:=G1+1]
+  res[team %in% rp$team[rp$rank==2.0], G2:=G2+1]
+  res[team %in% rp$team[rp$rank %in% c(1.0,2.0)], F8:=G1+G2]
+  
+  # Round of 16 ("Achtelfinale/KO-Runde")
+  round2 <- which(mat$round =="Round of 16")
+  map<-setNames(rp$team, rp$pos)
+  mat$team1[round2] <- map[mat$team1[round2]]
+  mat$team2[round2] <- map[mat$team2[round2]]
+  mat$win[round2]<-sim(mat[round2, ])
+  
+  mat[round2, "winner":=ifelse(win>0,team1,ifelse(win<0,team2,"-"))]
+  res[team %in% mat$winner[round2], F4:=F4+1]
+  
+  # Quarter finals
+  round3 <- which(mat$round =="Quarter Finals")
+  mat$team1[round3[1]] <- mat$winner[round2[1]]
+  mat$team2[round3[1]] <- mat$winner[round2[2]]
+  mat$team1[round3[2]] <- mat$winner[round2[3]]
+  mat$team2[round3[2]] <- mat$winner[round2[4]]
+  mat$team1[round3[3]] <- mat$winner[round2[5]]
+  mat$team2[round3[3]] <- mat$winner[round2[6]]
+  mat$team1[round3[4]] <- mat$winner[round2[7]]
+  mat$team2[round3[4]] <- mat$winner[round2[8]]
+  
+  mat$win[round3]<-sim(mat[round3, ])
+  mat[round3, "winner":=ifelse(win>0,team1,ifelse(win<0,team2,"-"))]
+  
+  res[team %in% mat$winner[round3], F2:=F2+1]
+  
+  # Semi finals
+  round4 <- which(mat$round=="Semi Finals")
+  mat$team1[round4[1]] <- mat$winner[round3[3]]
+  mat$team2[round4[1]] <- mat$winner[round3[1]]
+  mat$team1[round4[2]] <- mat$winner[round3[2]]
+  mat$team2[round4[2]] <- mat$winner[round3[4]]
+  
+  mat$win[round4]<-sim(mat[round4, ])
+  mat[round4, "winner":=ifelse(win>0,team1,ifelse(win<0,team2,"-"))]
+  mat[round4, "looser":=ifelse(win<0,team1,ifelse(win>0,team2,"-"))]
+  
+  res[team %in% mat$winner[round4], F1:=F1+1]
+  
+  # Finals
+  round5 <- which(mat$round=="Finals")
+  mat$team1[round5[1]] <- mat$looser[round4[1]]
+  mat$team2[round5[1]] <- mat$looser[round4[2]]
+  mat$team1[round5[2]] <- mat$winner[round4[1]]
+  mat$team2[round5[2]] <- mat$winner[round4[2]]
+  
+  mat$win[round5]<-sim(mat[round5, ])
+  mat[round5, "winner":=ifelse(win>0,team1,ifelse(win<0,team2,"-"))]
+  mat[round5, "looser":=ifelse(win<0,team1,ifelse(win>0,team2,"-"))]
+  
+  res[team == mat$winner[round5[2]]]$P1 <- res[team == mat$winner[round5[2]]]$P1 + 1
+  res[team == mat$looser[round5[2]]]$P2 <- res[team == mat$looser[round5[2]]]$P2 + 1
+  res[team == mat$winner[round5[1]]]$P3 <- res[team == mat$winner[round5[1]]]$P3 + 1
+  res[team == mat$looser[round5[1]]]$P4 <- res[team == mat$looser[round5[1]]]$P4 + 1
+
+}
+
+
+resp<-cbind(res[, c(1,2)], res[, -c(1,2)]/sum(res$P1))
+
+# save(res, resp, match, scores, results, file="fifa2018_4.RData", compress = T)
