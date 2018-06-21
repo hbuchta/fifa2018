@@ -11,7 +11,7 @@
 ## Script parameters
 
 | Parameter | sample value | description |
-| ---
+| --- | --- | --- |
 | `opt.date` | `as.Date("2018-06-20")` |  For evaluation the strength of each team, existing results are used up to the following date. Forecast of future results is computed started from the day after this date
 | `opt.rounds` | `100000` | number of monte carlo rounds
 | `opt.years` | `30` | number of years backwards to estimate the strength of each team. Older matches are not taken into account
