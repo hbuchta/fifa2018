@@ -8,10 +8,10 @@ library(data.table)
 
 # For evaluation the strength of each team, existing results are used up to the following date
 # Forecast of future results is computed started from the day after this date
-opt.date <- as.Date("2018-06-19")
+opt.date <- as.Date("2018-06-20")  # ok until 2018-06-19
 
 # Number of monte-carlo rounds
-opt.rounds <- 10000
+opt.rounds <- 100000
 
 # how many years of past matches should be used for strength estimation
 opt.years <- 30
@@ -19,6 +19,12 @@ opt.years <- 30
 # set weight for oldest matches at opt.years. Newest matches have weight 1.0
 opt.fulldecay <- 0.01
 
+
+if (file.exists("results.RData")) {
+  load("results.RData")
+} else {
+  results_by_day <- list()
+}
 
 
 # Download datasets ####
@@ -126,7 +132,9 @@ colnames(scores2)<-paste(colnames(scores2),"2",sep="")
 worldcup[, NoEven:=TRUE]
 worldcup[which(worldcup$round %in% c("1","2","3")),NoEven:=FALSE]
 
-# data<-worldcup[which(worldcup$round %in% c("1","2","3")),]
+
+# Simulation (monte carlo) ####
+
 sim <- function(data) {
   d<-data
   d$idx<-1:nrow(d)
@@ -140,7 +148,6 @@ sim <- function(data) {
 # sim(worldcup[worldcup$round %in% c("1","2","3"), ])
 
 
-# Simulation (monte carlo) ####
 
 set.seed(12345)
 time.start <- Sys.time()
@@ -231,13 +238,19 @@ for (i in 1:opt.rounds) {
 
   if (i %% 100==0 | i == opt.rounds) {
     cat(
-      "Iteration ",i
+      "Iteration: ",i
       , ", Zeit: ", round(difftime(Sys.time(),time.start, unit="min"),1), " min."
-      , ", Platzierung 1-3=", paste(head(paste(results$team[order(results$P1, decreasing=T)]," (",round(results$P1[order(results$P1, decreasing=T)]/sum(results$P1),2),")", sep=""),3), collapse=", ")
-      , "\n")
+      , ", Platzierung 1-3: ", paste(head(paste(results$team[order(results$P1, decreasing=T)]," (",round(results$P1[order(results$P1, decreasing=T)]/sum(results$P1),2),")", sep=""),3), collapse=", ")
+      , "\n"
+      , sep="")
   }
 }
 
 results_perc<-cbind(results[, c(1,2)], results[, -c(1,2)]/sum(results$P1))
 
-# save(results, results_perc, worldcup, scores, history, file="data/fifa2018.RData", compress = T)
+results_by_day[[as.character(opt.date)]]<-list(
+  "results"=results
+  ,"results_perc"=results_perc
+  ,"scores"=scores
+)
+save(results_by_day, file="results.RData", compress = T)
