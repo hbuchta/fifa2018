@@ -8,7 +8,7 @@ library(data.table)
 
 # For evaluation the strength of each team, existing results are used up to the following date
 # Forecast of future results is computed started from the day after this date
-opt.date <- as.Date("2018-06-20")  # ok until 2018-06-19
+opt.date <- as.Date("2018-06-21")  # ok until 2018-06-20
 
 # Number of monte-carlo rounds
 opt.rounds <- 100000
@@ -20,7 +20,7 @@ opt.years <- 30
 opt.fulldecay <- 0.01
 
 
-if (file.exists("results.RData")) {
+if (file.exists("data/results.RData")) {
   load("results.RData")
 } else {
   results_by_day <- list()
@@ -253,4 +253,4 @@ results_by_day[[as.character(opt.date)]]<-list(
   ,"results_perc"=results_perc
   ,"scores"=scores
 )
-save(results_by_day, file="results.RData", compress = T)
+save(results_by_day, file="data/results.RData", compress = T)

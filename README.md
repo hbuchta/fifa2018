@@ -22,4 +22,4 @@
 ## Some results
 This script in `R/fifa2018_results.R` is used to plot some results. The following chart shows the situation up until June 20, 2018. The percentage value shows the probability for the team to win the world cup. As you can see, England profits from the win against Tunisia and also how the chances for Germany are reduced after loosing against Mexico.
 
-![intermediate results](images/result_20180621.png)
+![intermediate results](images/chart.png)

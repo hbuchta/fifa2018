@@ -2,7 +2,7 @@ library(reshape)
 library(data.table)
 library(plotly)
 
-load("results.RData")
+load("data/results.RData/results.RData")
 names(results_by_day)
 
 fullres <- NULL
@@ -48,38 +48,7 @@ d<-d[order(P1, decreasing=T)]
 teams <- sort(unique(c(teams, head(d$team,5))))
 
 
-# Simple chart ####
-
-# teams<-c("Germany", "Brazil", "Argentina", "Russia", "France")
-dta <- fullres[team %in% teams & measure=="P1"]
-
-dta$date <- as.POSIXct(paste(as.character(dta$date), "00:00"))
-
-dta<-dta[order(date,team, decreasing = T)]
-dta<-dta[, list(team, value, match, upper.val=cumsum(value)), by=list(date)]
-dta[, lower.val :=  shift(upper.val, fill = 0), by=list(date)]
-dta[, mean.val := (upper.val+lower.val)/2]
-
-dta<-dta[order(date,team)]
-
-# stepped visualization:
-dta2<-copy(dta)[, date:=shift(date, type = "lead"), by=list(team)]
-dta2<-dta2[!is.na(date)]
-dta2[, date:=date-0.001]
-dta2[, match:=0]
-dta3<-dta[date==max(date)]
-dta3[,date:=date+60*60*24]
-dta[, match:=0]
-dta<-rbind(dta,dta2,dta3)
-
-ggplot(dta, aes(x=date, y=value, fill=team)) +
-  geom_area(alpha=0.6) +
-  #geom_area(alpha=0.6 , size=1, colour="black") + 
-  geom_point(data = dta[match==1], aes(date, mean.val))
-
-
-
-# Experimental chart ####
+# chart ####
 
 # teams is populated above
 dta <- fullres[team %in% teams & measure=="P1"]
@@ -112,9 +81,9 @@ ggplot(dta, aes(x=date, ymin=value.shift-.5*value, ymax=value.shift + .5* value,
   guides(fill=FALSE) +
   geom_ribbon(alpha=1) +
   theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
-  geom_point(data = dta[match==1], aes(x=date, y=value.shift), color="black", fill=color_map[as.character(dta[match==1]$win)], shape=21, size=3, stroke=2)+
-  geom_text(data = dta[match==1], aes(x=date,y=value.shift, label=result, hjust="left"), nudge_x=60*60*4*as.numeric(max(dta$date)-min(dta$date))/7) +
+  geom_label(data = dta[match==1], aes(x=date,y=value.shift, label=result), label.r = unit(0.45, "lines"), label.size = 0.25, size=3, color="black", fill=color_map[as.character(dta[match==1]$win)]) +
   geom_text(data=dta[date==min(date)], aes(x=date, y=value.shift, label=team, hjust="left")) +
   geom_text(data=dta[date==max(date)], aes(x=date, y=value.shift, label=paste(round(100*value,1),"%",sep=""), hjust="right"))
 
 dta[date==max(date)]
+View(results_by_day[[length(results_by_day)]]$results_perc)
