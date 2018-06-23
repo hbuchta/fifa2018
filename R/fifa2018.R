@@ -8,7 +8,7 @@ library(data.table)
 
 # For evaluation the strength of each team, existing results are used up to the following date
 # Forecast of future results is computed started from the day after this date
-opt.date <- as.Date("2018-06-22")  # ok until 2018-06-20
+opt.date <- as.Date("2018-06-23")
 
 # Number of monte-carlo rounds
 opt.rounds <- 100000
@@ -153,7 +153,7 @@ set.seed(12345)
 time.start <- Sys.time()
 
 for (i in 1:opt.rounds) {
-  
+
   # einzelner Simulationsschritt
   mat <- copy(worldcup)
   
@@ -235,6 +235,7 @@ for (i in 1:opt.rounds) {
   results[team == mat$looser[round5[2]]]$P2 <- results[team == mat$looser[round5[2]]]$P2 + 1
   results[team == mat$winner[round5[1]]]$P3 <- results[team == mat$winner[round5[1]]]$P3 + 1
   results[team == mat$looser[round5[1]]]$P4 <- results[team == mat$looser[round5[1]]]$P4 + 1
+  
 
   if (i %% 100==0 | i == opt.rounds) {
     cat(

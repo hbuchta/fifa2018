@@ -85,5 +85,7 @@ ggplot(dta, aes(x=date, ymin=value.shift-.5*value, ymax=value.shift + .5* value,
   geom_text(data=dta[date==min(date)], aes(x=date, y=value.shift, label=team, hjust="left")) +
   geom_text(data=dta[date==max(date)], aes(x=date, y=value.shift, label=paste(round(100*value,1),"%",sep=""), hjust="right"))
 
+ggsave("images/chart1.png")
+
 dta[date==max(date)]
 View(results_by_day[[length(results_by_day)]]$results_perc)
