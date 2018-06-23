@@ -2,7 +2,7 @@ library(reshape)
 library(data.table)
 library(plotly)
 
-load("data/results.RData/results.RData")
+load("data/results.RData")
 names(results_by_day)
 
 fullres <- NULL
