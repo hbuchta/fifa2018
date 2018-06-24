@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 library(reshape)
 library(data.table)
 library(plotly)

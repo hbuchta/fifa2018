@@ -1,3 +1,5 @@
+#!/usr/bin/env Rscript
+
 # See 
 # https://www.kaggle.com/agostontorok/soccer-world-cup-2018-winner?utm_medium=email&utm_source=mailchimp&utm_campaign=datanotes-20160614
 # for inspiration and data sets
@@ -8,16 +10,21 @@ library(data.table)
 
 # For evaluation the strength of each team, existing results are used up to the following date
 # Forecast of future results is computed started from the day after this date
-opt.date <- as.Date("2018-06-23")
+opt.date <- as.Date("2018-06-24")
 
 # Number of monte-carlo rounds
 opt.rounds <- 100000
 
 # how many years of past matches should be used for strength estimation
-opt.years <- 30
+opt.years <- 25
 
 # set weight for oldest matches at opt.years. Newest matches have weight 1.0
 opt.fulldecay <- 0.01
+
+
+# Stop simulation if difference between two iteration blocks (100 singe iterations each) does not improve
+# for given number of rounds. -1 = don't do early stopping
+opt.earlystop <- -1 #25
 
 
 if (file.exists("data/results.RData")) {
@@ -152,11 +159,16 @@ sim <- function(data) {
 set.seed(12345)
 time.start <- Sys.time()
 
+results_last <- NULL
+results_best_rmse <- 1E9
+results_best_count <- 0
+if (opt.earlystop<0) opt.earlystop <- opt.rounds
+
 for (i in 1:opt.rounds) {
 
   # einzelner Simulationsschritt
   mat <- copy(worldcup)
-  
+
   # Gruppenrunde
   round1 <- which(mat$round %in% c("1","2","3"))
   mat$win[round1]<-sim(mat[round1, ])
@@ -242,8 +254,31 @@ for (i in 1:opt.rounds) {
       "Iteration: ",i
       , ", Zeit: ", round(difftime(Sys.time(),time.start, unit="min"),1), " min."
       , ", Platzierung 1-3: ", paste(head(paste(results$team[order(results$P1, decreasing=T)]," (",round(results$P1[order(results$P1, decreasing=T)]/sum(results$P1),2),")", sep=""),3), collapse=", ")
-      , "\n"
       , sep="")
+    
+    if (!is.null(results_last)) {
+      results_perc<-cbind(results[, c(1,2)], results[, -c(1,2)]/sum(results$P1))
+      results_last_perc<-cbind(results_last[, c(1,2)], results_last[, -c(1,2)]/sum(results_last$P1))
+      
+      results_perc <- results_perc[order(team)]
+      results_last_perc <- results_last_perc[order(team)]
+      
+      rmse <- sqrt(mean((results_perc[,-c(1,2)]-results_last_perc[, -c(1,2)])^2))
+      if (rmse<results_best_rmse) {
+        results_best_count <- 0
+        results_best_rmse <- rmse
+      } else {
+        results_best_count <- results_best_count + 1
+      }
+      
+      cat(", RMSE=", rmse)
+      if (results_best_count>=opt.earlystop) {
+        cat("\nEarly stopping\n")
+        break;
+      }
+    }
+    results_last<-copy(results)
+    cat("\n")
   }
 }
 
