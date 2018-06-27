@@ -10,7 +10,7 @@ library(data.table)
 
 # For evaluation the strength of each team, existing results are used up to the following date
 # Forecast of future results is computed started from the day after this date
-opt.date <- as.Date("2018-06-24")
+opt.date <- as.Date("2018-06-27")
 
 # Number of monte-carlo rounds
 opt.rounds <- 100000
@@ -45,11 +45,12 @@ colnames(history)<-c("date", "team1", "team2", "score1", "score2")
 
 # get current results (will be updated during the fifa world cup 2018)
 dummy <- readLines("https://fixturedownload.com/results/fifa-world-cup-2018") # need to do this first
+rm(dummy)
 worldcup<-read.csv("https://fixturedownload.com/download/fifa-world-cup-2018-RussianStandardTime.csv", header=T, stringsAsFactors = F)
 write.csv(worldcup, "data/FIFA_Worldcup_2018_results.csv", row.names = F)
 # worldcup <- read.csv("data/FIFA_Worldcup_2018_results.csv", header=T, stringsAsFactors=F, encoding="UTF-8")
 setDT(worldcup)
-rm(dummy)
+
 
 
 # Prepare datasets ####
@@ -196,8 +197,10 @@ for (i in 1:opt.rounds) {
   # Round of 16 ("Achtelfinale/KO-Runde")
   round2 <- which(mat$round =="Round of 16")
   map<-setNames(rp$team, rp$pos)
-  mat$team1[round2] <- map[mat$team1[round2]]
-  mat$team2[round2] <- map[mat$team2[round2]]
+  t1 <- map[mat$team1[round2]]
+  t2 <- map[mat$team2[round2]]
+  mat$team1[round2] <- ifelse(is.na(names(t1)),mat$team1[round2],t1)
+  mat$team2[round2] <- ifelse(is.na(names(t2)),mat$team2[round2],t2)
   mat$win[round2]<-sim(mat[round2, ])
   
   mat[round2, "winner":=ifelse(win>0,team1,ifelse(win<0,team2,"-"))]
