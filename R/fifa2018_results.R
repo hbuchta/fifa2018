@@ -83,9 +83,10 @@ ggplot(dta, aes(x=date, ymin=value.shift-.5*value, ymax=value.shift + .5* value,
   guides(fill=FALSE) +
   geom_ribbon(alpha=1) +
   theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
-  geom_label(data = dta[match==1], aes(x=date,y=value.shift, label=result), label.r = unit(0.45, "lines"), label.size = 0.25, size=3, color="black", fill=color_map[as.character(dta[match==1]$win)]) +
   geom_text(data=dta[date==min(date)], aes(x=date, y=value.shift, label=team, hjust="left")) +
-  geom_text(data=dta[date==max(date)], aes(x=date, y=value.shift, label=paste(round(100*value,1),"%",sep=""), hjust="right"))
+  geom_text(data=dta[date==max(date)], aes(x=date, y=value.shift, label=paste(round(100*value,1),"%",sep=""), hjust="right")) +
+  geom_label(data = dta[match==1], aes(x=date,y=value.shift, label=result), label.r = unit(0.45, "lines"), label.size = 0.25, size=3, color="black", fill=color_map[as.character(dta[match==1]$win)]) 
+  
 
 #ggsave("images/chart1.png")
 
