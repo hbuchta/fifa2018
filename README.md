@@ -20,6 +20,6 @@
 
 
 ## Some results
-This script in `R/fifa2018_results.R` is used to plot some results. The following chart shows the situation up until June 20, 2018. The percentage value shows the probability for the team to win the world cup. As you can see, England profits from the win against Tunisia and also how the chances for Germany are reduced after loosing against Mexico.
+This script in `R/fifa2018_results.R` is used to plot some results. The following chart shows the situation up until June 20, 2018. The percentage value shows the probability for the team to win the world cup. As you can see the chances for Germany are reduced after loosing against Mexico, then getting better after winning against Sweden and finally dropping to 0% when loosing against the Korea Republic. In the first simulation (before the world cup started), Brazil was scored best with 10%, followed by Spain (8%) and Argentina (7.5%). During the world cup positions changed a lot with Spai currently leading.
 
 ![intermediate results](images/chart.png)

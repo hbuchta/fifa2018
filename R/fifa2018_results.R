@@ -88,6 +88,11 @@ ggplot(dta, aes(x=date, ymin=value.shift-.5*value, ymax=value.shift + .5* value,
   geom_label(data = dta[match==1], aes(x=date,y=value.shift, label=result), label.r = unit(0.45, "lines"), label.size = 0.25, size=3, color="black", fill=color_map[as.character(dta[match==1]$win)]) 
   
 
+# + geom_vline(xintercept = ...)[1])
+# + geom_hline(yintercept=20, linetype="dashed", color = "red", size=2)
+# + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+# + theme_void()
+
 #ggsave("images/chart1.png")
 
 dta[date==max(date)]
