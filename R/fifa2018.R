@@ -10,7 +10,7 @@ library(data.table)
 
 # For evaluation the strength of each team, existing results are used up to the following date
 # Forecast of future results is computed started from the day after this date
-opt.date <- as.Date("2018-06-28")
+opt.date <- as.Date("2018-07-01")
 
 # Number of monte-carlo rounds
 opt.rounds <- 100000

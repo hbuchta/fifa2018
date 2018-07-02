@@ -44,13 +44,21 @@ fullres[is.na(fullres$match), match:=0]
 
 d<-results_by_day[[1]]$results_perc
 d<-d[order(P1, decreasing=T)]
-teams <- head(d$team,5)
+teams <- c(head(d$team,5), "Russia")
 d<-results_by_day[[length(results_by_day)]]$results_perc
 d<-d[order(P1, decreasing=T)]
 teams <- sort(unique(c(teams, head(d$team,5))))
 
 
 # chart ####
+
+worldcup[, round2:=round]
+worldcup[round2 %in% c("1","2","3"), round2:="1-3"]
+rounds <- worldcup[
+  , list("StartDate"=min(date), "EndDate"=max(date))
+  , by=list(round2)
+]
+
 
 # teams is populated above
 dta <- fullres[team %in% teams & measure=="P1"]
@@ -79,19 +87,18 @@ dta<-rbind(dta,dta2,dta3)
 
 color_map = setNames(c("green","red","gray"), c(1,-1,0))
 
+date_range <- as.POSIXct(round(dta$date))
+
 ggplot(dta, aes(x=date, ymin=value.shift-.5*value, ymax=value.shift + .5* value, fill=team)) +
   guides(fill=FALSE) +
+  scale_x_datetime(name="time", breaks=date_range, labels=format(date_range, "%m/%d")) +
+  geom_vline(xintercept= 12*60*60+as.POSIXct(rounds$EndDate), color="black") +
   geom_ribbon(alpha=1) +
-  theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank()) +
+  theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank(), panel.background = element_blank()) +
   geom_text(data=dta[date==min(date)], aes(x=date, y=value.shift, label=team, hjust="left")) +
   geom_text(data=dta[date==max(date)], aes(x=date, y=value.shift, label=paste(round(100*value,1),"%",sep=""), hjust="right")) +
-  geom_label(data = dta[match==1], aes(x=date,y=value.shift, label=result), label.r = unit(0.45, "lines"), label.size = 0.25, size=3, color="black", fill=color_map[as.character(dta[match==1]$win)]) 
-  
+  geom_label(data = dta[match==1], aes(x=date,y=value.shift, label=result), label.r = unit(0.45, "lines"), label.size = 0.25, size=3, color="black", fill=color_map[as.character(dta[match==1]$win)])
 
-# + geom_vline(xintercept = ...)[1])
-# + geom_hline(yintercept=20, linetype="dashed", color = "red", size=2)
-# + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
-# + theme_void()
 
 #ggsave("images/chart1.png")
 
