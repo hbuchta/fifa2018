@@ -23,7 +23,7 @@ setDT(worldcup)
 worldcup$Home.Team<-gsub("\t","",worldcup$Home.Team)
 worldcup$Away.Team<-gsub("\t","",worldcup$Away.Team)
 worldcup<-worldcup[, -3]
-colnames(worldcup)<-c("round","date","team1", "team2", "group", "result")
+colnames(worldcup)<-c("round","date","team1", "team2", "group", "result", "origresult")
 worldcup$date<-as.Date(worldcup$date, "%d/%m/%Y")
 worldcup[
   !is.na(result) & result!=""
@@ -65,8 +65,16 @@ dta <- fullres[team %in% teams & measure=="P1"]
 dta$date <- as.POSIXct(paste(as.character(dta$date), "00:00"))
 
 sortorder <- dta[date==max(date),list(team, sortorder=frank(-value))]
-dta <- merge(dta, sortorder, by=c("team"))    
-dta<-dta[order(date, sortorder)]
+# dta[, dateout:=min(ifelse(value==0,date, na.rm=T), na.rm=T), by=list(team)]
+
+dta <- merge(dta, sortorder, by=c("team"))   
+
+dta[
+  , DateOut:=sum(value==0)
+  , by=list(team)
+  ]
+
+dta<-dta[order(date, sortorder, -DateOut, team)]
 
 space.factor <- 1.05
 
@@ -92,7 +100,7 @@ date_range <- as.POSIXct(round(dta$date))
 ggplot(dta, aes(x=date, ymin=value.shift-.5*value, ymax=value.shift + .5* value, fill=team)) +
   guides(fill=FALSE) +
   scale_x_datetime(name="time", breaks=date_range, labels=format(date_range, "%m/%d")) +
-  geom_vline(xintercept= 12*60*60+as.POSIXct(rounds$EndDate), color="black") +
+  #geom_vline(xintercept= 12*60*60+as.POSIXct(rounds$EndDate), color="black") +
   geom_ribbon(alpha=1) +
   theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank(), panel.background = element_blank()) +
   geom_text(data=dta[date==min(date)], aes(x=date, y=value.shift, label=team, hjust="left")) +
