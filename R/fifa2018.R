@@ -45,6 +45,7 @@ worldcup$OrigResult<-worldcup$Result
 worldcup$Result[51] <- "3 - 4"  # Spain-Russia
 worldcup$Result[52] <- "3 - 2"  # Croatia-Denmark
 worldcup$Result[56] <- "3 - 4"  # Colombia-England
+worldcup$Result[60] <- "3 - 4"  # Russia-Croatia
 
 write.csv(worldcup, "data/FIFA_Worldcup_2018_results.csv", row.names = F)
 
