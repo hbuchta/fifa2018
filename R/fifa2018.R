@@ -254,9 +254,10 @@ for (opt.date.index in 1:length(opt.date.range)) {
     
     # Semi finals
     round4 <- which(mat$round=="Semi Finals")
-    mat$team1[round4[1]] <- mat$winner[round3[3]]
-    mat$team2[round4[1]] <- mat$winner[round3[1]]
-    mat$team1[round4[2]] <- mat$winner[round3[2]]
+    
+    mat$team1[round4[1]] <- mat$winner[round3[1]]
+    mat$team2[round4[1]] <- mat$winner[round3[2]]
+    mat$team1[round4[2]] <- mat$winner[round3[3]]
     mat$team2[round4[2]] <- mat$winner[round3[4]]
     
     mat$win[round4]<-sim(mat[round4, ])

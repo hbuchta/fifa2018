@@ -46,6 +46,7 @@ d<-results_by_day[[1]]$results_perc
 d<-d[order(P1, decreasing=T)]
 teams <- c(head(d$team,5), "Russia")
 d<-results_by_day[[length(results_by_day)]]$results_perc
+d<-d[P1>0]
 d<-d[order(P1, decreasing=T)]
 teams <- sort(unique(c(teams, head(d$team,5))))
 
@@ -64,17 +65,66 @@ rounds <- worldcup[
 dta <- fullres[team %in% teams & measure=="P1"]
 dta$date <- as.POSIXct(paste(as.character(dta$date), "00:00"))
 
-sortorder <- dta[date==max(date),list(team, sortorder=frank(-value))]
-# dta[, dateout:=min(ifelse(value==0,date, na.rm=T), na.rm=T), by=list(team)]
+# old sort/packing
+# sortorder <- dta[date==max(date),list(team, sortorder=frank(-value))]
+# # dta[, dateout:=min(ifelse(value==0,date, na.rm=T), na.rm=T), by=list(team)]
+# 
+# dta <- merge(dta, sortorder, by=c("team"))   
+# 
+# dta[
+#   , DateOut:=sum(value==0)
+#   , by=list(team)
+#   ]
+# 
+# dta<-dta[order(date, sortorder, -DateOut, team)] 
 
-dta <- merge(dta, sortorder, by=c("team"))   
-
-dta[
-  , DateOut:=sum(value==0)
+# new sort/packing
+teams.val<- dta[
+  , list("maxval"=max(value))
   , by=list(team)
   ]
+teams.val<- teams.val[order(maxval, decreasing=T)]
+dta$teamorder <- setNames(1:length(teams), teams.val$team)[dta$team]
 
-dta<-dta[order(date, sortorder, -DateOut, team)]
+for (tm in 3:length(teams.val)) {
+  ord.best.val<-Inf
+  ord.best<-NULL
+  
+  for (i in 1:tm) {
+    d<-dta[teamorder<=tm]
+    
+    ord<-c(
+      if (i>1) 1:(i-1) else NULL
+      , tm
+      , if (i<tm) i:(tm-1) else NULL
+    )
+    
+    ord<-setNames(1:tm, ord)
+    
+    unique(d[, c("team", "teamorder")])
+    d$teamorder <- as.numeric(ord[as.character(d$teamorder)])
+    unique(d[, c("team", "teamorder")])
+    
+    d<-d[order(d$date, d$teamorder)]
+    
+    d[, value.prev:=shift(value, fill = 0), by=list(date)]
+    d[, value.max:=max((value.prev+value)/2), by=list(team)]
+    d[, value.shift:=cumsum(value.max), by=list(date)]
+    
+    val <- max(d$value.shift)
+    if (val < ord.best.val) {
+      ord.best.val <- val
+      ord.best <- ord
+    }
+  }
+  order.new <- as.numeric(ord.best[as.character(dta$teamorder)])
+  order.new[is.na(order.new)] <- dta$teamorder[is.na(order.new)]
+  dta$teamorder<-order.new
+}
+dta<-dta[order(date, teamorder)]
+
+
+
 
 space.factor <- 1.05
 
@@ -100,11 +150,11 @@ date_range <- as.POSIXct(round(dta$date))
 ggplot(dta, aes(x=date, ymin=value.shift-.5*value, ymax=value.shift + .5* value, fill=team)) +
   guides(fill=FALSE) +
   scale_x_datetime(name="time", breaks=date_range, labels=format(date_range, "%m/%d")) +
-  #geom_vline(xintercept= 12*60*60+as.POSIXct(rounds$EndDate), color="black") +
+  geom_vline(xintercept= 12*60*60+as.POSIXct(rounds$EndDate), color="black") +
   geom_ribbon(alpha=1) +
   theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank(), panel.background = element_blank()) +
   geom_text(data=dta[date==min(date)], aes(x=date, y=value.shift, label=team, hjust="left")) +
-  geom_text(data=dta[date==max(date)], aes(x=date, y=value.shift, label=paste(round(100*value,1),"%",sep=""), hjust="right")) +
+  geom_text(data=dta[date==max(date) & value>0], aes(x=date, y=value.shift, label=paste(round(100*value,1),"%",sep=""), hjust="right")) +
   geom_label(data = dta[match==1], aes(x=date,y=value.shift, label=result), label.r = unit(0.45, "lines"), label.size = 0.25, size=3, color="black", fill=color_map[as.character(dta[match==1]$win)])
 
 
